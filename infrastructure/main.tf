@@ -9,22 +9,92 @@ provider "aws" {
   #public_key = file("thomasressel_terraform.ppk")  # Pfad zum öffentlichen SSH-Schlüssel
 #}
 
-# ec2=aws_instance, ami ist mein Betrieb System und instance_type
 resource "aws_instance" "ec2_instanz_terraform_thomasressel" {
-  ami = "ami-0ecf75a98fe8519d7"  # Amazon Linux 2
+  ami           = "ami-0ecf75a98fe8519d7"  # Amazon Linux 2
   instance_type = "t2.micro"
-  key_name      = "thomasressel_terraform" # Verbindung zum ssh-key
+  key_name      = "thomasressel_terraform"
   vpc_security_group_ids = [
-  aws_security_group.ssh_access.id,
-  aws_security_group.web_access.id
-] # Verbindung zur Security Group mit SSH und WEB
+    aws_security_group.ssh_access.id,
+    aws_security_group.web_access.id
+  ]
+  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name
 
-  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name #Verbindung mit IAM-Rolle
+  user_data = <<-EOF
+              #!/bin/bash
+# Update system
+yum update -y
+
+# Install packages
+sudo yum install -y git python3 python3-pip postgresql15 postgresql15-server postgresql15-contrib
+
+# Clone your GitHub repo
+cd /home/ec2-user
+git clone https://github.com/Thomas-Ressel-92/AWS_grocery
+
+# Set correct ownership
+chown -R ec2-user:ec2-user /home/ec2-user/AWS_grocery
+
+# Confirm tools
+python3 --version
+pip --version
+psql --version
+git --version
+
+# === PostgreSQL Setup ===
+
+# Start and Enable PostgreSQL
+sudo /usr/bin/postgresql-setup --initdb
+sudo systemctl start postgresql
+sudo systemctl enable postgresql
+
+sudo systemctl status postgresql
+
+sudo -i -u postgres psql -c "ALTER USER postgres WITH PASSWORD '12345';"
+
+# Path to pg_hba.conf (default for local PostgreSQL)
+PG_HBA="/var/lib/pgsql/data/pg_hba.conf"
+
+# Backup first
+sudo cp $PG_HBA ${PG_HBA}.bak
+
+# Replace 'peer' or 'ident' with 'md5' for local connections
+sudo sed -i -E 's/^(local\s+all\s+all\s+)(peer|ident)/\1md5/' $PG_HBA
+sudo sed -i -E 's/^(host\s+all\s+all\s+127\.0\.0\.1\/32\s+)(peer|ident)/\1md5/' $PG_HBA
+sudo sed -i -E 's/^(host\s+all\s+all\s+::1\/128\s+)(peer|ident)/\1md5/' $PG_HBA
+
+# Restart PostgreSQL to apply changes
+sudo systemctl restart postgresql
+
+# Create DB, user, and grant access
+cd /home/ec2-user
+psql -U postgres -c "CREATE DATABASE grocerymate_db;"
+psql -U postgres -c "CREATE USER grocery_user WITH ENCRYPTED PASSWORD '12345';"
+psql -U postgres -c "ALTER USER grocery_user WITH SUPERUSER;"
+
+# Then execute the file-based SQL
+psql -U grocery_user -d grocerymate_db -f AWS_grocery/backend/app/sqlite_dump_clean.sql
+
+# Run SELECTs to verify
+psql -U grocery_user -d grocerymate_db -c "SELECT * FROM users;"
+psql -U grocery_user -d grocerymate_db -c "SELECT * FROM products;"
+
+# === Python Backend Setup ===
+
+cd /home/ec2-user/AWS_grocery/backend
+pip3 install -r requirements.txt
+
+# Generate .env file and token
+touch .env
+
+# Generate secure key
+python3 -c "import secrets; print(secrets.token_hex(32))"
+EOF
 
   tags = {
-    Name = "ec2_instanz_terraform_thomasressel" # Beschreibung
+    Name = "ec2_instanz_terraform_thomasressel"
   }
 }
+
 # Default-VPC
 data "aws_vpc" "default" {
   default = true
@@ -109,10 +179,10 @@ resource "aws_security_group" "web_access" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Erlaube Zugriff auf Port 5001
+  # Erlaube Zugriff auf Port 5000
   ingress {
-    from_port   = 5001
-    to_port     = 5001
+    from_port   = 5000
+    to_port     = 5000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
