@@ -19,7 +19,7 @@ resource "aws_instance" "ec2_instanz_terraform_thomasressel" {
   aws_security_group.web_access.id
 ] # Verbindung zur Security Group mit SSH und WEB
 
-  # iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name #Verbindung mit IAM-Rolle
+  iam_instance_profile = aws_iam_instance_profile.ec2_instance_profile.name #Verbindung mit IAM-Rolle
 
   tags = {
     Name = "ec2_instanz_terraform_thomasressel" # Beschreibung
