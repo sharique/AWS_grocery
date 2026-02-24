@@ -5,6 +5,13 @@ terraform {
       version = "~>6.0"
     }
   }
+  backend "s3" {
+    bucket       = "saf-tf-states"
+    key          = "terraform.tfstate"
+    region       = "ap-south-1"
+    use_lockfile = true
+    encrypt      = true
+  }
 }
 
 provider "aws" {
