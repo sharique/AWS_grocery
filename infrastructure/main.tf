@@ -163,3 +163,8 @@ resource "aws_security_group" "rds_sg" {
     name = "rds_sg"
   }
 }
+
+# S3 bucket for storign avatars.
+module "avatar_s3" {
+  source = "./avatar"
+}
