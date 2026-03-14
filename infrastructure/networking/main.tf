@@ -57,11 +57,47 @@ resource "aws_route_table_association" "public_b" {
   route_table_id = aws_route_table.public_rt.id
 }
 
+# Private subnets for RDS (no route to IGW)
+resource "aws_subnet" "private_a" {
+  vpc_id            = aws_vpc.tf_vpc.id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = "eu-central-1a"
+  tags = {
+    Name = "private_a"
+  }
+}
 
-# DB subnet group for RDS (requires 2+ AZs)
+resource "aws_subnet" "private_b" {
+  vpc_id            = aws_vpc.tf_vpc.id
+  cidr_block        = "10.0.4.0/24"
+  availability_zone = "eu-central-1b"
+  tags = {
+    Name = "private_b"
+  }
+}
+
+# Private route table — intentionally has no route to IGW
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.tf_vpc.id
+  tags = {
+    Name = "private_rt"
+  }
+}
+
+resource "aws_route_table_association" "private_a" {
+  subnet_id      = aws_subnet.private_a.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+resource "aws_route_table_association" "private_b" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+# DB subnet group for RDS (private subnets, 2 AZs required)
 resource "aws_db_subnet_group" "postgres_subnet_group" {
   name       = "postgres_subnet_group"
-  subnet_ids = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
   tags = {
     Name = "postgres_subnet_group"
   }

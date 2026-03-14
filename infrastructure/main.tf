@@ -18,27 +18,27 @@ provider "aws" {
   region = "eu-central-1"
 }
 
-module "netowrking" {
+module "networking" {
   source = "./networking"
 }
 
 module "compute" {
   source = "./compute"
 
-  subnet_id = module.netowrking.subnet_public_a_id
-  vpc_id    = module.netowrking.vpc_id
+  subnet_id = module.networking.subnet_public_a_id
+  vpc_id    = module.networking.vpc_id
 }
 
 module "database" {
   source = "./database"
 
-  vpc_id            = module.netowrking.vpc_id
-  subnet_group_name = module.netowrking.db_subnet_group_name
+  vpc_id            = module.networking.vpc_id
+  subnet_group_name = module.networking.db_subnet_group_name
   web_app_sg_id     = module.compute.web_app_sg_id
   db_username       = var.db_username
   db_password       = var.db_password
 }
 # S3 bucket for storign avatars.
-module "avatar_s3" {
-  source = "./avatar"
+module "avatars" {
+  source = "./avatars"
 }
