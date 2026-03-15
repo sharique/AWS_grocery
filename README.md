@@ -32,6 +32,7 @@ The setup includes:
 - An EC2 environment running Dockerized applications.
 - A secure PostgreSQL database on RDS with Failover Replica in private subnets.
 - An S3 buckets for storing user avatars and database dumps and terraform states.
+- SSP Parameter store is used to store db credentials and other information that need to be shared between different infrastructure components.
 
 ## Architecture Diagrams
 
@@ -56,7 +57,59 @@ The setup includes:
     - EC2 security group allows SSH from a specific IP and ALB traffic over port 5000.
     - RDS security group allows access only from EC2 instances.
 6. Internet Gateway - it allow application EC2 instace to exposer application over internet.
+7. SSM Parameter store - it stores data that is shared between EC2 instance and RDS, including database credentials.
 
+## Deployment steps
+
+1. Create `variables.tfvars` file with following details in infrastructure folder
+```terraform
+db_username    = "<db_username>"
+db_password    = "<strong db_password>"
+
+```
+2. Provision infrastructure using terraform commands.
+```sh
+terraform plan -var-file=variables.tfvars
+terraform apply -var-file=variables.tfvars
+```
+3. Login into EC2 instance
+4. Pull the image from ECR
+```sh
+AWS_REGION=eu-central-1
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+ECR_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/masterschool
+
+# Authenticate Docker to ECR
+aws ecr get-login-password --region $AWS_REGION \
+  | docker login --username AWS --password-stdin \
+      ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+
+# Pull the image
+docker pull ${ECR_URI}:latest
+```
+
+5. Create `grocerymate.env` file with following details
+```env
+JWT_SECRET_KEY=<enerate with: python3 -c "import secrets; print(secrets.token_hex(32))">
+POSTGRES_USER=<username>
+POSTGRES_PASSWORD="<strong password>"
+POSTGRES_DB=grocerymate_db
+POSTGRES_HOST=<rds endpoing>
+POSTGRES_URI=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
+S3_BUCKET_NAME=saf-grocery-store-v3
+S3_REGION=eu-central-1
+USE_S3_STORAGE=true
+```
+6. Run docker container using following command
+```sh
+docker run -d \
+  --name grocerymate \
+  --restart unless-stopped \
+  --env-file ~/grocerymate.env \
+  -p 5000:5000 \
+  ${ECR_URI}:latest
+```
+7. Verify application is running correctly
 
 ## Future enhancements
 
