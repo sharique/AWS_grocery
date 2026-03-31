@@ -8,6 +8,7 @@
 3. [Architecture Diagrams](#architecture-diagram)
 4. [Folder strucuture](#folder-structure)
 5. [Infrastucture components](#infrastucture-components)
+6. [Infrastructure cost](#cost-estimate)
 6. [Future enhancements](#future-enhancements)
 
 
@@ -110,6 +111,11 @@ docker run -d \
   ${ECR_URI}:latest
 ```
 7. Verify application is running correctly
+
+## Cost estimate
+
+As on 20 March 2026, cost estimate of infrastructure defined in code base is generate by [Infracost](https://www.infracost.io/) tool is as follwoing.
+![AWS Diagram](Cost-estimate.png "AWS Architecture diagram")
 
 ## Future enhancements
 

@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "s3" {
-    bucket       = "saf-grocery-store-states"
+    bucket       = "saf-tf-store-states"
     key          = "terraform.tfstate"
     region       = "eu-central-1"
     use_lockfile = true
